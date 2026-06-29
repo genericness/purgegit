@@ -12,7 +12,7 @@
   },
   "observability": { "enabled": true },
   "vars": {
-    "GITHUB_CLIENT_ID": "",
+    "GITHUB_CLIENT_ID": "Ov23liokqSt3ddy1yEtc",
     "APP_BASE_URL": "https://purgegit.4x.rip"
   },
   "routes": [{ "pattern": "purgegit.4x.rip", "custom_domain": true }]
