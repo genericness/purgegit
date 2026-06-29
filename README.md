@@ -77,7 +77,3 @@ The `purgegit.4x.rip` custom domain is bound via the `routes` entry in `wrangler
 - `pnpm build` — typecheck and build
 - `pnpm deploy` — build and deploy to Cloudflare
 - `pnpm cf-typegen` — regenerate Worker binding types
-
-## Permissions
-
-Sign-in requests the `repo` and `delete_repo` OAuth scopes, which are required to change repository visibility and to delete repositories. The token is only ever used server-side and can be revoked any time from your GitHub settings or by signing out.
