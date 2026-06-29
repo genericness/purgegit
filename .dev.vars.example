@@ -1,0 +1,4 @@
+GITHUB_CLIENT_ID=your_dev_oauth_app_client_id
+GITHUB_CLIENT_SECRET=your_dev_oauth_app_client_secret
+COOKIE_SECRET=generate_with_openssl_rand_base64_32
+APP_BASE_URL=http://localhost:5173

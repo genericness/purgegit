@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "purgegit",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2025-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist/client",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true },
+  "vars": {
+    "GITHUB_CLIENT_ID": "",
+    "APP_BASE_URL": "https://purgegit.4x.rip"
+  },
+  "routes": [{ "pattern": "purgegit.4x.rip", "custom_domain": true }]
+}
