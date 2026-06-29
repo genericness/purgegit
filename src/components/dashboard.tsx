@@ -13,6 +13,7 @@ import { FiltersToolbar } from "@/components/filters-toolbar"
 import { RepoTable } from "@/components/repo-table"
 import { ActionBar } from "@/components/action-bar"
 import { ActionConfirmDialog } from "@/components/confirm-dialog"
+import { BatchProgressDialog, type BatchProgress } from "@/components/batch-progress-dialog"
 import { EmptyState } from "@/components/empty-state"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -71,6 +72,7 @@ export function Dashboard({ me }: { me: Me }) {
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [busy, setBusy] = useState<Record<number, "running" | "error">>({})
   const [pending, setPending] = useState<{ action: RepoAction; repos: Repo[] } | null>(null)
+  const [progress, setProgress] = useState<BatchProgress | null>(null)
   const [running, setRunning] = useState(false)
 
   const visible = useMemo(() => {
@@ -133,6 +135,10 @@ export function Dashboard({ me }: { me: Me }) {
   async function performAction(action: RepoAction, targets: Repo[]) {
     setRunning(true)
     const idByKey = new Map(targets.map((r) => [String(r.id), r.id]))
+    const nameByKey = new Map(targets.map((r) => [String(r.id), r.name]))
+    if (targets.length > 1) {
+      setProgress({ action, total: targets.length, completed: 0, ok: 0, failed: 0, current: null, done: false })
+    }
     const items: BatchItem[] = targets.map((r) => ({
       key: String(r.id),
       run: () => {
@@ -153,6 +159,13 @@ export function Dashboard({ me }: { me: Me }) {
         return next
       })
       if (status === "ok") applyOptimistic(action, id)
+      setProgress((p) => {
+        if (!p) return p
+        if (status === "running") return { ...p, current: nameByKey.get(key) ?? null }
+        if (status === "ok") return { ...p, completed: p.completed + 1, ok: p.ok + 1 }
+        if (status === "error") return { ...p, completed: p.completed + 1, failed: p.failed + 1 }
+        return p
+      })
     })
 
     const failed = outcomes.filter((o) => !o.ok)
@@ -160,6 +173,7 @@ export function Dashboard({ me }: { me: Me }) {
     setSelected(new Set(failed.map((o) => idByKey.get(o.key)!)))
     setBusy({})
     setRunning(false)
+    setProgress((p) => (p ? { ...p, done: true, current: null } : p))
 
     const noun = (n: number) => (n === 1 ? "repository" : "repositories")
     if (failed.length === 0) toast.success(`${okCount} ${noun(okCount)} ${PAST_TENSE[action]}`)
@@ -238,6 +252,8 @@ export function Dashboard({ me }: { me: Me }) {
           onCancel={() => setPending(null)}
         />
       )}
+
+      {progress && <BatchProgressDialog progress={progress} onClose={() => setProgress(null)} />}
     </div>
   )
 }
