@@ -46,11 +46,11 @@ export function RepoRow({
             href={repo.htmlUrl}
             target="_blank"
             rel="noreferrer noopener"
-            className="truncate text-sm font-medium text-foreground hover:text-primary hover:underline"
+            className="inline-flex min-w-0 items-center gap-1 text-sm font-medium text-foreground hover:text-primary hover:underline"
           >
-            {repo.name}
+            <span className="truncate">{repo.name}</span>
+            <ExternalLinkIcon className="size-3 shrink-0 opacity-60" />
           </a>
-          <ExternalLinkIcon className="size-3 shrink-0 text-muted-foreground" />
           {repo.fork && <ForkBadge repo={repo} />}
           {repo.archived && <Badge variant="secondary">archived</Badge>}
         </div>
