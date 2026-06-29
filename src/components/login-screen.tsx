@@ -41,7 +41,7 @@ export function LoginScreen() {
         </h1>
 
         <p className="text-legible mt-5 text-base text-foreground/80 sm:text-lg">
-          clean up your github. make old public repos private, archive, or delete them — in bulk.
+          clean up your github. make old public repos private, archive, or delete them in bulk.
         </p>
 
         <div className="pointer-events-auto mt-10">
