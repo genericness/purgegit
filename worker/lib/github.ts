@@ -171,6 +171,22 @@ export function setRepoArchived(token: string, owner: string, repo: string): Pro
   return patchRepo(token, owner, repo, { archived: true })
 }
 
+export interface RepoParent {
+  fullName: string
+  owner: string
+  htmlUrl: string
+}
+
+export async function getRepoParent(token: string, owner: string, repo: string): Promise<RepoParent | null> {
+  const res = await githubFetch(token, `/repos/${owner}/${repo}`)
+  if (!res.ok) throw await toError(res)
+  const data = (await res.json()) as {
+    parent?: { full_name: string; owner: { login: string }; html_url: string } | null
+  }
+  if (!data.parent) return null
+  return { fullName: data.parent.full_name, owner: data.parent.owner.login, htmlUrl: data.parent.html_url }
+}
+
 export async function deleteRepo(token: string, owner: string, repo: string): Promise<void> {
   const res = await githubFetch(token, `/repos/${owner}/${repo}`, { method: "DELETE" })
   if (res.status === 404) return

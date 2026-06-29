@@ -9,6 +9,7 @@ import "./index.css"
 
 import { App } from "@/App"
 import { Toaster } from "@/components/ui/sonner"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false } },
@@ -17,7 +18,9 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <TooltipProvider delay={150}>
+        <App />
+      </TooltipProvider>
       <Toaster position="bottom-right" />
     </QueryClientProvider>
   </StrictMode>

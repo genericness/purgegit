@@ -22,6 +22,12 @@ export interface Me {
   htmlUrl: string
 }
 
+export interface ForkParent {
+  fullName: string
+  owner: string
+  htmlUrl: string
+}
+
 export type RepoAction = "private" | "archive" | "delete"
 
 export type SortKey = "pushed" | "name" | "stars" | "created"

@@ -10,6 +10,7 @@ import {
   setRepoPrivate,
   setRepoArchived,
   deleteRepo,
+  getRepoParent,
 } from "../lib/github"
 
 const repos = new Hono<AppEnv>()
@@ -37,6 +38,15 @@ repos.get("/", async (c) => {
   try {
     const list = await listPublicRepos(c.get("token"))
     return c.json({ repos: list, total: list.length })
+  } catch (err) {
+    return handleError(c, err)
+  }
+})
+
+repos.get("/:owner/:name/parent", async (c) => {
+  try {
+    const parent = await getRepoParent(c.get("token"), c.req.param("owner"), c.req.param("name"))
+    return c.json(parent)
   } catch (err) {
     return handleError(c, err)
   }

@@ -1,4 +1,4 @@
-import type { Me, Repo } from "./types"
+import type { ForkParent, Me, Repo } from "./types"
 
 export class ApiError extends Error {
   status: number
@@ -38,6 +38,8 @@ const e = encodeURIComponent
 export const api = {
   me: () => request<Me>("/api/me"),
   repos: () => request<{ repos: Repo[]; total: number }>("/api/repos"),
+  parent: (owner: string, name: string) =>
+    request<ForkParent | null>(`/api/repos/${e(owner)}/${e(name)}/parent`),
   makePrivate: (owner: string, name: string) =>
     request<{ ok: true }>(`/api/repos/${e(owner)}/${e(name)}/private`, { method: "POST" }),
   archive: (owner: string, name: string) =>

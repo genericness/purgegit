@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ForkBadge } from "@/components/fork-badge"
 import { cn } from "@/lib/utils"
 import { relativeTime, languageColor } from "@/lib/format"
 import type { Repo, RepoAction } from "@/lib/types"
@@ -50,7 +51,7 @@ export function RepoRow({
             {repo.name}
           </a>
           <ExternalLinkIcon className="size-3 shrink-0 text-muted-foreground" />
-          {repo.fork && <Badge variant="outline">fork</Badge>}
+          {repo.fork && <ForkBadge repo={repo} />}
           {repo.archived && <Badge variant="secondary">archived</Badge>}
         </div>
 
