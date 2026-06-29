@@ -55,9 +55,14 @@ export function LoginScreen() {
           <p className="text-legible mt-4 text-sm text-destructive">sign-in failed. please try again.</p>
         )}
 
-        <p className="text-legible mt-10 text-xs text-foreground/55">
-          free · open source · your token stays on the server
-        </p>
+        <a
+          href="https://github.com/genericness/purgegit"
+          target="_blank"
+          rel="noreferrer noopener"
+          className="text-legible pointer-events-auto mt-10 text-xs text-foreground/55 underline-offset-4 transition-colors hover:text-foreground/85 hover:underline"
+        >
+          open source
+        </a>
       </div>
     </main>
   )
