@@ -1,6 +1,6 @@
 # purgegit
 
-A free tool to clean up your GitHub account. Sign in with GitHub, browse your public repositories, and make old ones private, archive them, or delete them — individually or in bulk.
+A free tool to clean up your GitHub account. Sign in with GitHub, browse your public repositories, and make old ones private, archive them, or delete them, individually or in bulk.
 
 Live at [purgegit.4x.rip](https://purgegit.4x.rip).
 
@@ -13,15 +13,6 @@ Live at [purgegit.4x.rip](https://purgegit.4x.rip).
 - Make private, archive, or delete — per repo or as a bulk batch
 - Type-to-confirm guard on deletes
 - Rate-limit-aware batching with per-item success/failure reporting
-
-## How it works
-
-purgegit is a single Cloudflare Worker:
-
-- The **React SPA** (Vite) is served from the Worker's static assets.
-- The **Hono API** under `/api/*` handles the OAuth flow and proxies every GitHub call.
-
-Your GitHub access token never reaches the browser. The Worker exchanges the OAuth code for a token, encrypts it with AES-GCM, and stores it in an `httpOnly` `Secure` cookie. All GitHub requests are made server-side with that token.
 
 ## Stack
 
