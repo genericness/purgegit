@@ -14,6 +14,7 @@ import { RepoTable } from "@/components/repo-table"
 import { ActionBar } from "@/components/action-bar"
 import { ActionConfirmDialog } from "@/components/confirm-dialog"
 import { BatchProgressDialog, type BatchProgress } from "@/components/batch-progress-dialog"
+import { ForkDetachDialog } from "@/components/fork-detach-dialog"
 import { EmptyState } from "@/components/empty-state"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -73,6 +74,7 @@ export function Dashboard({ me }: { me: Me }) {
   const [busy, setBusy] = useState<Record<number, "running" | "error">>({})
   const [pending, setPending] = useState<{ action: RepoAction; repos: Repo[] } | null>(null)
   const [progress, setProgress] = useState<BatchProgress | null>(null)
+  const [forkPrompt, setForkPrompt] = useState<{ forks: Repo[]; others: Repo[] } | null>(null)
   const [running, setRunning] = useState(false)
 
   const visible = useMemo(() => {
@@ -122,6 +124,13 @@ export function Dashboard({ me }: { me: Me }) {
 
   function requestAction(action: RepoAction, targets: Repo[]) {
     if (running || targets.length === 0) return
+    if (action === "private") {
+      const forks = targets.filter((r) => r.fork)
+      if (forks.length > 0) {
+        setForkPrompt({ forks, others: targets.filter((r) => !r.fork) })
+        return
+      }
+    }
     setPending({ action, repos: targets })
   }
 
@@ -254,6 +263,19 @@ export function Dashboard({ me }: { me: Me }) {
       )}
 
       {progress && <BatchProgressDialog progress={progress} onClose={() => setProgress(null)} />}
+
+      {forkPrompt && (
+        <ForkDetachDialog
+          forks={forkPrompt.forks}
+          others={forkPrompt.others}
+          onClose={() => setForkPrompt(null)}
+          onPrivateOthers={() => {
+            const others = forkPrompt.others
+            setForkPrompt(null)
+            if (others.length > 0) setPending({ action: "private", repos: others })
+          }}
+        />
+      )}
     </div>
   )
 }
