@@ -233,14 +233,14 @@ export function Dashboard({ me }: { me: Me }) {
       <AppHeader me={me} repoCount={repos.length} onLogout={handleLogout} />
 
       <main className="mx-auto max-w-4xl px-4 py-6 pb-28">
-        <div className="mb-4 flex items-end justify-between gap-3">
-          <div>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="text-lg font-semibold text-foreground">your public repositories</h1>
             <p className="text-sm text-muted-foreground">
               select repos to make private, archive, or delete.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <Button
               variant="outline"
               size="sm"

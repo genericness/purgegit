@@ -66,9 +66,9 @@ export function ActionConfirmDialog({
           <ul className="max-h-40 overflow-y-auto rounded-lg border border-border bg-muted/40 p-2 text-sm">
             {repos.map((r) => (
               <li key={r.id} className="flex items-center gap-2 px-1 py-0.5">
-                <span className="truncate text-foreground">{r.name}</span>
-                {r.fork && <Badge variant="outline">fork</Badge>}
-                {r.archived && <Badge variant="secondary">archived</Badge>}
+                <span className="min-w-0 flex-1 truncate text-foreground">{r.name}</span>
+                {r.fork && <Badge variant="outline" className="shrink-0">fork</Badge>}
+                {r.archived && <Badge variant="secondary" className="shrink-0">archived</Badge>}
               </li>
             ))}
           </ul>

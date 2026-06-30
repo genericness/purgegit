@@ -44,7 +44,7 @@ export function ForkDetachDialog({
         <ul className="max-h-48 overflow-y-auto rounded-lg border border-border bg-muted/40 p-1.5 text-sm">
           {forks.map((f) => (
             <li key={f.id} className="flex items-center justify-between gap-2 px-1.5 py-1">
-              <span className="truncate text-foreground">{f.name}</span>
+              <span className="min-w-0 truncate text-foreground">{f.name}</span>
               <a
                 href={`https://github.com/${f.owner}/${f.name}/settings`}
                 target="_blank"
