@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { RefreshCwIcon } from "lucide-react"
+import { RefreshCwIcon, HistoryIcon } from "lucide-react"
 import { toast } from "sonner"
 import { useRepos } from "@/hooks/use-repos"
 import { api } from "@/lib/api"
 import { runBatch, type BatchItem } from "@/lib/queue"
 import { monthsSince } from "@/lib/format"
+import { buildCanonical } from "@/lib/history"
 import { cn } from "@/lib/utils"
 import type { Filters, Me, Repo, RepoAction, SortKey } from "@/lib/types"
 import { AppHeader } from "@/components/app-header"
@@ -15,6 +16,7 @@ import { ActionBar } from "@/components/action-bar"
 import { ActionConfirmDialog } from "@/components/confirm-dialog"
 import { BatchProgressDialog, type BatchProgress } from "@/components/batch-progress-dialog"
 import { ForkDetachDialog } from "@/components/fork-detach-dialog"
+import { HistoryScrubDialog } from "@/components/history-scrub-dialog"
 import { EmptyState } from "@/components/empty-state"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -26,6 +28,8 @@ const INITIAL_FILTERS: Filters = {
   archivedOnly: false,
   staleMonths: 0,
 }
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 const PAST_TENSE: Record<RepoAction, string> = {
   private: "made private",
@@ -75,6 +79,9 @@ export function Dashboard({ me }: { me: Me }) {
   const [pending, setPending] = useState<{ action: RepoAction; repos: Repo[] } | null>(null)
   const [progress, setProgress] = useState<BatchProgress | null>(null)
   const [forkPrompt, setForkPrompt] = useState<{ forks: Repo[]; others: Repo[] } | null>(null)
+  const [scrubRepo, setScrubRepo] = useState<Repo | null>(null)
+  const [flagged, setFlagged] = useState<Set<number>>(new Set())
+  const [scanning, setScanning] = useState(false)
   const [running, setRunning] = useState(false)
 
   const visible = useMemo(() => {
@@ -198,6 +205,29 @@ export function Dashboard({ me }: { me: Me }) {
     queryClient.removeQueries({ queryKey: ["repos"] })
   }
 
+  async function runDiscovery() {
+    if (scanning || repos.length === 0) return
+    setScanning(true)
+    const { keptEmails } = buildCanonical(me)
+    const found = new Set<number>()
+    for (const r of repos) {
+      try {
+        const { identities } = await api.peekIdentities(r.owner, r.name)
+        if (identities.some((i) => i.email && !keptEmails.has(i.email.toLowerCase()))) found.add(r.id)
+      } catch {
+        found.delete(r.id)
+      }
+      setFlagged(new Set(found))
+      await sleep(120)
+    }
+    setScanning(false)
+    toast(
+      found.size > 0
+        ? `${found.size} repo${found.size === 1 ? "" : "s"} have old commit identities`
+        : "No old commit identities found"
+    )
+  }
+
   return (
     <div className="min-h-[100svh]">
       <AppHeader me={me} repoCount={repos.length} onLogout={handleLogout} />
@@ -210,15 +240,26 @@ export function Dashboard({ me }: { me: Me }) {
               select repos to make private, archive, or delete.
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void reposQuery.refetch()}
-            disabled={reposQuery.isFetching}
-          >
-            <RefreshCwIcon className={cn(reposQuery.isFetching && "animate-spin")} />
-            refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void runDiscovery()}
+              disabled={scanning || repos.length === 0}
+            >
+              <HistoryIcon className={cn(scanning && "animate-pulse")} />
+              {scanning ? "scanning…" : "find old identities"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void reposQuery.refetch()}
+              disabled={reposQuery.isFetching}
+            >
+              <RefreshCwIcon className={cn(reposQuery.isFetching && "animate-spin")} />
+              refresh
+            </Button>
+          </div>
         </div>
 
         <FiltersToolbar filters={filters} onChange={setFilters} />
@@ -243,9 +284,11 @@ export function Dashboard({ me }: { me: Me }) {
               repos={visible}
               selected={selected}
               busy={busy}
+              flagged={flagged}
               onToggle={toggle}
               onToggleAll={toggleAll}
               onAction={requestAction}
+              onScrub={setScrubRepo}
             />
           )}
         </div>
@@ -263,6 +306,10 @@ export function Dashboard({ me }: { me: Me }) {
       )}
 
       {progress && <BatchProgressDialog progress={progress} onClose={() => setProgress(null)} />}
+
+      {scrubRepo && (
+        <HistoryScrubDialog repo={scrubRepo} me={me} onClose={() => setScrubRepo(null)} />
+      )}
 
       {forkPrompt && (
         <ForkDetachDialog

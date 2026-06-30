@@ -16,10 +16,39 @@ export interface Repo {
 }
 
 export interface Me {
+  id: number
   login: string
   name: string | null
+  email: string | null
   avatarUrl: string
   htmlUrl: string
+}
+
+export interface CommitIdentity {
+  name: string
+  email: string
+  date: string
+}
+
+export interface CommitNode {
+  sha: string
+  tree: string
+  parents: string[]
+  author: CommitIdentity
+  committer: CommitIdentity
+  message: string
+}
+
+export interface RefInfo {
+  name: string
+  sha: string
+}
+
+export interface ScanResult {
+  branches: RefInfo[]
+  tags: RefInfo[]
+  commits: CommitNode[]
+  truncated: boolean
 }
 
 export interface ForkParent {

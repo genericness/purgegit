@@ -4,6 +4,7 @@ import { getSessionToken, clearSession } from "./lib/cookies"
 import { getUser, GitHubError } from "./lib/github"
 import auth from "./routes/auth"
 import repos from "./routes/repos"
+import history from "./routes/history"
 
 const app = new Hono<AppEnv>()
 
@@ -22,6 +23,7 @@ app.get("/api/me", async (c) => {
 })
 
 app.route("/api/repos", repos)
+app.route("/api/history", history)
 
 app.all("/api/*", (c) => c.json({ error: "not_found" }, 404))
 

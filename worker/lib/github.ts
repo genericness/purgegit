@@ -35,8 +35,10 @@ export interface RepoDTO {
 }
 
 export interface GitHubUser {
+  id: number
   login: string
   name: string | null
+  email: string | null
   avatarUrl: string
   htmlUrl: string
 }
@@ -129,12 +131,21 @@ export async function getUser(token: string): Promise<GitHubUser> {
   const res = await githubFetch(token, "/user")
   if (!res.ok) throw await toError(res)
   const u = (await res.json()) as {
+    id: number
     login: string
     name: string | null
+    email: string | null
     avatar_url: string
     html_url: string
   }
-  return { login: u.login, name: u.name, avatarUrl: u.avatar_url, htmlUrl: u.html_url }
+  return {
+    id: u.id,
+    login: u.login,
+    name: u.name,
+    email: u.email,
+    avatarUrl: u.avatar_url,
+    htmlUrl: u.html_url,
+  }
 }
 
 export async function listPublicRepos(token: string): Promise<RepoDTO[]> {
@@ -205,4 +216,167 @@ export async function revokeToken(clientId: string, clientSecret: string, token:
     },
     body: JSON.stringify({ access_token: token }),
   }).catch(() => undefined)
+}
+
+export interface CommitIdentity {
+  name: string
+  email: string
+  date: string
+}
+
+export interface CommitNode {
+  sha: string
+  tree: string
+  parents: string[]
+  author: CommitIdentity
+  committer: CommitIdentity
+  message: string
+}
+
+export interface RefInfo {
+  name: string
+  sha: string
+}
+
+export interface ScanResult {
+  branches: RefInfo[]
+  tags: RefInfo[]
+  commits: CommitNode[]
+  truncated: boolean
+}
+
+async function listRefs(token: string, owner: string, repo: string, kind: "branches" | "tags"): Promise<RefInfo[]> {
+  const out: RefInfo[] = []
+  for (let page = 1; page <= 10; page++) {
+    const res = await githubFetch(token, `/repos/${owner}/${repo}/${kind}?per_page=100&page=${page}`)
+    if (!res.ok) throw await toError(res)
+    const batch = (await res.json()) as { name: string; commit: { sha: string } }[]
+    for (const r of batch) out.push({ name: r.name, sha: r.commit.sha })
+    if (batch.length < 100) break
+  }
+  return out
+}
+
+async function collectCommitsFrom(
+  token: string,
+  owner: string,
+  repo: string,
+  startSha: string,
+  into: Map<string, CommitNode>,
+  cap: number
+): Promise<boolean> {
+  let url: string | null = `/repos/${owner}/${repo}/commits?sha=${startSha}&per_page=100`
+  while (url) {
+    const res = await githubFetch(token, url)
+    if (res.status === 409) return true
+    if (!res.ok) throw await toError(res)
+    const batch = (await res.json()) as Array<{
+      sha: string
+      commit: {
+        tree: { sha: string }
+        message: string
+        author: CommitIdentity
+        committer: CommitIdentity
+      }
+      parents: { sha: string }[]
+    }>
+    for (const c of batch) {
+      if (into.has(c.sha)) continue
+      into.set(c.sha, {
+        sha: c.sha,
+        tree: c.commit.tree.sha,
+        parents: c.parents.map((p) => p.sha),
+        author: c.commit.author,
+        committer: c.commit.committer,
+        message: c.commit.message,
+      })
+      if (into.size > cap) return false
+    }
+    const link = res.headers.get("link") ?? ""
+    const match = link.match(/<([^>]+)>;\s*rel="next"/)
+    url = match ? match[1] : null
+  }
+  return true
+}
+
+export async function scanHistory(token: string, owner: string, repo: string, cap = 4000): Promise<ScanResult> {
+  const branches = (await listRefs(token, owner, repo, "branches")).slice(0, 40)
+  const tags = (await listRefs(token, owner, repo, "tags")).slice(0, 100)
+  const commits = new Map<string, CommitNode>()
+  let ok = true
+  for (const b of branches) {
+    ok = await collectCommitsFrom(token, owner, repo, b.sha, commits, cap)
+    if (!ok) break
+  }
+  if (ok) {
+    for (const t of tags) {
+      if (commits.has(t.sha)) continue
+      ok = await collectCommitsFrom(token, owner, repo, t.sha, commits, cap)
+      if (!ok) break
+    }
+  }
+  return { branches, tags, commits: [...commits.values()], truncated: !ok }
+}
+
+export async function peekIdentities(token: string, owner: string, repo: string): Promise<CommitIdentity[]> {
+  const res = await githubFetch(token, `/repos/${owner}/${repo}/commits?per_page=100`)
+  if (res.status === 409) return []
+  if (!res.ok) throw await toError(res)
+  const batch = (await res.json()) as Array<{
+    commit: { author: CommitIdentity | null; committer: CommitIdentity | null }
+  }>
+  const seen = new Map<string, CommitIdentity>()
+  for (const c of batch) {
+    for (const id of [c.commit.author, c.commit.committer]) {
+      if (id?.email) seen.set(`${id.name} ${id.email}`, id)
+    }
+  }
+  return [...seen.values()]
+}
+
+export async function createCommit(
+  token: string,
+  owner: string,
+  repo: string,
+  body: {
+    message: string
+    tree: string
+    parents: string[]
+    author: CommitIdentity
+    committer: CommitIdentity
+  }
+): Promise<string> {
+  const res = await githubFetch(token, `/repos/${owner}/${repo}/git/commits`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw await toError(res)
+  const data = (await res.json()) as { sha: string }
+  return data.sha
+}
+
+export async function createRef(token: string, owner: string, repo: string, ref: string, sha: string): Promise<void> {
+  const res = await githubFetch(token, `/repos/${owner}/${repo}/git/refs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ref, sha }),
+  })
+  if (!res.ok && res.status !== 422) throw await toError(res)
+}
+
+export async function updateRef(
+  token: string,
+  owner: string,
+  repo: string,
+  ref: string,
+  sha: string,
+  force: boolean
+): Promise<void> {
+  const res = await githubFetch(token, `/repos/${owner}/${repo}/git/refs/${ref}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sha, force }),
+  })
+  if (!res.ok) throw await toError(res)
 }
