@@ -23,7 +23,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
 
 const PACE = 250
 
@@ -47,9 +46,10 @@ type Phase = "review" | "running" | "done" | "error"
 
 export function HistoryScrubDialog({ repo, me, onClose }: { repo: Repo; me: Me; onClose: () => void }) {
   const queryClient = useQueryClient()
+  const [scanProgress, setScanProgress] = useState<{ commits: number; label: string } | null>(null)
   const scanQuery = useQuery({
     queryKey: ["scan", repo.id],
-    queryFn: () => api.scanHistory(repo.owner, repo.name),
+    queryFn: () => api.scanHistory(repo.owner, repo.name, setScanProgress),
     retry: false,
     staleTime: Infinity,
   })
@@ -262,10 +262,12 @@ export function HistoryScrubDialog({ repo, me, onClose }: { repo: Repo; me: Me; 
             </DialogHeader>
 
             {scanQuery.isLoading ? (
-              <div className="flex flex-col gap-2">
-                <Skeleton className="h-4 w-48" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
+              <div className="flex items-center gap-3 py-6 text-sm text-muted-foreground">
+                <Loader2Icon className="size-4 shrink-0 animate-spin text-primary" />
+                <span>
+                  Scanning commit history{scanProgress ? ` — ${scanProgress.commits} commits` : "…"}
+                  {scanProgress?.label ? ` (${scanProgress.label})` : ""}
+                </span>
               </div>
             ) : scanQuery.isError ? (
               <p className="text-sm text-destructive">Couldn't scan this repository's history.</p>
