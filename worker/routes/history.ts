@@ -1,4 +1,5 @@
 import { Hono } from "hono"
+import { stream } from "hono/streaming"
 import type { AppEnv } from "../types"
 import { requireAuth } from "../middleware/require-auth"
 import { handleGitHubError } from "../lib/http"
@@ -8,6 +9,7 @@ import {
   createCommit,
   createRef,
   updateRef,
+  GitHubError,
   type CommitIdentity,
 } from "../lib/github"
 
@@ -16,12 +18,23 @@ const history = new Hono<AppEnv>()
 history.use("*", requireAuth)
 
 history.get("/:owner/:name/scan", async (c) => {
-  try {
-    const result = await scanHistory(c.get("token"), c.req.param("owner"), c.req.param("name"))
-    return c.json(result)
-  } catch (err) {
-    return handleGitHubError(c, err)
-  }
+  const token = c.get("token")
+  const owner = c.req.param("owner")
+  const name = c.req.param("name")
+  c.header("Content-Type", "application/x-ndjson")
+  c.header("Cache-Control", "no-store")
+  return stream(c, async (s) => {
+    try {
+      const result = await scanHistory(token, owner, name, 4000, async (commits, label) => {
+        await s.write(JSON.stringify({ type: "progress", commits, label }) + "\n")
+      })
+      await s.write(JSON.stringify({ type: "result", result }) + "\n")
+    } catch (err) {
+      const status = err instanceof GitHubError ? err.status : 500
+      const message = err instanceof Error ? err.message : "Scan failed"
+      await s.write(JSON.stringify({ type: "error", status, message }) + "\n")
+    }
+  })
 })
 
 history.get("/:owner/:name/peek", async (c) => {

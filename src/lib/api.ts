@@ -47,8 +47,48 @@ export const api = {
   remove: (owner: string, name: string) =>
     request<{ ok: true }>(`/api/repos/${e(owner)}/${e(name)}`, { method: "DELETE" }),
   logout: () => request<void>("/api/auth/logout", { method: "POST" }),
-  scanHistory: (owner: string, name: string) =>
-    request<ScanResult>(`/api/history/${e(owner)}/${e(name)}/scan`),
+  scanHistory: async (
+    owner: string,
+    name: string,
+    onProgress: (p: { commits: number; label: string }) => void
+  ): Promise<ScanResult> => {
+    const res = await fetch(`/api/history/${e(owner)}/${e(name)}/scan`, {
+      credentials: "same-origin",
+      headers: { Accept: "application/x-ndjson" },
+    })
+    if (!res.ok || !res.body) {
+      const data = (await res.json().catch(() => ({}))) as Record<string, unknown>
+      throw new ApiError(
+        res.status,
+        typeof data.message === "string" ? data.message : res.statusText,
+        typeof data.error === "string" ? data.error : undefined
+      )
+    }
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ""
+    let result: ScanResult | null = null
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      let newline: number
+      while ((newline = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, newline).trim()
+        buffer = buffer.slice(newline + 1)
+        if (!line) continue
+        const msg = JSON.parse(line) as
+          | { type: "progress"; commits: number; label: string }
+          | { type: "result"; result: ScanResult }
+          | { type: "error"; status?: number; message?: string }
+        if (msg.type === "progress") onProgress({ commits: msg.commits, label: msg.label })
+        else if (msg.type === "result") result = msg.result
+        else if (msg.type === "error") throw new ApiError(msg.status ?? 500, msg.message ?? "Scan failed")
+      }
+    }
+    if (!result) throw new ApiError(500, "Scan did not complete")
+    return result
+  },
   peekIdentities: (owner: string, name: string) =>
     request<{ identities: { name: string; email: string }[] }>(
       `/api/history/${e(owner)}/${e(name)}/peek`

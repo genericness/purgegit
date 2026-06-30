@@ -257,13 +257,17 @@ async function listRefs(token: string, owner: string, repo: string, kind: "branc
   return out
 }
 
+export type ScanProgress = (commits: number, label: string) => void | Promise<void>
+
 async function collectCommitsFrom(
   token: string,
   owner: string,
   repo: string,
   startSha: string,
   into: Map<string, CommitNode>,
-  cap: number
+  cap: number,
+  label: string,
+  onProgress?: ScanProgress
 ): Promise<boolean> {
   let url: string | null = `/repos/${owner}/${repo}/commits?sha=${startSha}&per_page=100`
   while (url) {
@@ -292,6 +296,7 @@ async function collectCommitsFrom(
       })
       if (into.size > cap) return false
     }
+    if (onProgress) await onProgress(into.size, label)
     const link = res.headers.get("link") ?? ""
     const match = link.match(/<([^>]+)>;\s*rel="next"/)
     url = match ? match[1] : null
@@ -299,19 +304,26 @@ async function collectCommitsFrom(
   return true
 }
 
-export async function scanHistory(token: string, owner: string, repo: string, cap = 4000): Promise<ScanResult> {
+export async function scanHistory(
+  token: string,
+  owner: string,
+  repo: string,
+  cap = 4000,
+  onProgress?: ScanProgress
+): Promise<ScanResult> {
+  if (onProgress) await onProgress(0, "reading refs")
   const branches = (await listRefs(token, owner, repo, "branches")).slice(0, 40)
   const tags = (await listRefs(token, owner, repo, "tags")).slice(0, 100)
   const commits = new Map<string, CommitNode>()
   let ok = true
   for (const b of branches) {
-    ok = await collectCommitsFrom(token, owner, repo, b.sha, commits, cap)
+    ok = await collectCommitsFrom(token, owner, repo, b.sha, commits, cap, b.name, onProgress)
     if (!ok) break
   }
   if (ok) {
     for (const t of tags) {
       if (commits.has(t.sha)) continue
-      ok = await collectCommitsFrom(token, owner, repo, t.sha, commits, cap)
+      ok = await collectCommitsFrom(token, owner, repo, t.sha, commits, cap, t.name, onProgress)
       if (!ok) break
     }
   }
