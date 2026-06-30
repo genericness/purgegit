@@ -46,14 +46,14 @@ export function RepoRow({
       <Checkbox checked={selected} onCheckedChange={onToggle} className="mt-1" aria-label={`Select ${repo.name}`} />
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <a
             href={repo.htmlUrl}
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-flex min-w-0 items-center gap-1 text-sm font-medium text-foreground hover:text-primary hover:underline"
+            className="inline-flex min-w-0 max-w-full items-center gap-1 text-sm font-medium text-foreground hover:text-primary hover:underline"
           >
-            <span className="truncate">{repo.name}</span>
+            <span className="min-w-0 truncate">{repo.name}</span>
             <ExternalLinkIcon className="size-3 shrink-0 opacity-60" />
           </a>
           {repo.fork && <ForkBadge repo={repo} />}

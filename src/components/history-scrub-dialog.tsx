@@ -225,7 +225,7 @@ export function HistoryScrubDialog({ repo, me, onClose }: { repo: Repo; me: Me; 
               </span>
               <ul className="max-h-32 overflow-y-auto rounded-lg border border-border bg-muted/40 p-2 font-mono text-xs">
                 {result.backups.map((b) => (
-                  <li key={b} className="truncate">{b}</li>
+                  <li key={b} className="break-all">{b}</li>
                 ))}
               </ul>
             </div>
@@ -294,15 +294,14 @@ export function HistoryScrubDialog({ repo, me, onClose }: { repo: Repo; me: Me; 
                           onCheckedChange={() => toggleIdentity(key)}
                           aria-label={`Replace ${i.name}`}
                         />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-foreground">
-                            {i.name || "(no name)"} <span className="text-muted-foreground">&lt;{i.email}&gt;</span>
-                          </div>
+                        <div className="min-w-0 flex-1 leading-tight">
+                          <div className="truncate text-foreground">{i.name || "(no name)"}</div>
+                          <div className="truncate text-xs text-muted-foreground">{i.email}</div>
                         </div>
                         {i.isCanonical ? (
-                          <Badge variant="secondary">you</Badge>
+                          <Badge variant="secondary" className="shrink-0">you</Badge>
                         ) : (
-                          <Badge variant="outline">{i.authorCount + i.committerCount}</Badge>
+                          <Badge variant="outline" className="shrink-0">{i.authorCount + i.committerCount}</Badge>
                         )}
                       </li>
                     )
