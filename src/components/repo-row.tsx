@@ -4,6 +4,7 @@ import {
   LockIcon,
   ArchiveIcon,
   Trash2Icon,
+  EraserIcon,
   Loader2Icon,
   ExternalLinkIcon,
 } from "lucide-react"
@@ -19,14 +20,18 @@ export function RepoRow({
   repo,
   selected,
   status,
+  flagged,
   onToggle,
   onAction,
+  onScrub,
 }: {
   repo: Repo
   selected: boolean
   status?: "running" | "error"
+  flagged?: boolean
   onToggle: () => void
   onAction: (action: RepoAction) => void
+  onScrub: () => void
 }) {
   const running = status === "running"
 
@@ -53,6 +58,15 @@ export function RepoRow({
           </a>
           {repo.fork && <ForkBadge repo={repo} />}
           {repo.archived && <Badge variant="secondary">archived</Badge>}
+          {flagged && (
+            <button
+              type="button"
+              onClick={onScrub}
+              className="inline-flex h-5 shrink-0 items-center rounded-4xl border border-amber-500/40 bg-amber-500/10 px-2 text-xs font-medium text-amber-500 transition-colors hover:bg-amber-500/20"
+            >
+              old commits
+            </button>
+          )}
         </div>
 
         {repo.description && (
@@ -87,6 +101,15 @@ export function RepoRow({
           <Loader2Icon className="m-1 size-4 animate-spin text-muted-foreground" />
         ) : (
           <>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              title="Scrub commit identities"
+              aria-label="Scrub commit identities"
+              onClick={onScrub}
+            >
+              <EraserIcon />
+            </Button>
             <Button
               variant="ghost"
               size="icon-sm"

@@ -6,16 +6,20 @@ export function RepoTable({
   repos,
   selected,
   busy,
+  flagged,
   onToggle,
   onToggleAll,
   onAction,
+  onScrub,
 }: {
   repos: Repo[]
   selected: Set<number>
   busy: Record<number, "running" | "error">
+  flagged: Set<number>
   onToggle: (id: number) => void
   onToggleAll: () => void
   onAction: (action: RepoAction, repos: Repo[]) => void
+  onScrub: (repo: Repo) => void
 }) {
   const allSelected = repos.length > 0 && repos.every((r) => selected.has(r.id))
   const someSelected = repos.some((r) => selected.has(r.id))
@@ -40,8 +44,10 @@ export function RepoTable({
           repo={repo}
           selected={selected.has(repo.id)}
           status={busy[repo.id]}
+          flagged={flagged.has(repo.id)}
           onToggle={() => onToggle(repo.id)}
           onAction={(action) => onAction(action, [repo])}
+          onScrub={() => onScrub(repo)}
         />
       ))}
     </div>

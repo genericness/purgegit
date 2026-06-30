@@ -1,4 +1,4 @@
-import type { ForkParent, Me, Repo } from "./types"
+import type { CommitIdentity, ForkParent, Me, Repo, ScanResult } from "./types"
 
 export class ApiError extends Error {
   status: number
@@ -47,4 +47,38 @@ export const api = {
   remove: (owner: string, name: string) =>
     request<{ ok: true }>(`/api/repos/${e(owner)}/${e(name)}`, { method: "DELETE" }),
   logout: () => request<void>("/api/auth/logout", { method: "POST" }),
+  scanHistory: (owner: string, name: string) =>
+    request<ScanResult>(`/api/history/${e(owner)}/${e(name)}/scan`),
+  peekIdentities: (owner: string, name: string) =>
+    request<{ identities: { name: string; email: string }[] }>(
+      `/api/history/${e(owner)}/${e(name)}/peek`
+    ),
+  createCommit: (
+    owner: string,
+    name: string,
+    body: {
+      message: string
+      tree: string
+      parents: string[]
+      author: CommitIdentity
+      committer: CommitIdentity
+    }
+  ) =>
+    request<{ sha: string }>(`/api/history/${e(owner)}/${e(name)}/commit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  createBackupRef: (owner: string, name: string, ref: string, sha: string) =>
+    request<{ ok: true }>(`/api/history/${e(owner)}/${e(name)}/ref`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ref, sha }),
+    }),
+  forceRef: (owner: string, name: string, ref: string, sha: string) =>
+    request<{ ok: true }>(`/api/history/${e(owner)}/${e(name)}/ref`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ref, sha, force: true }),
+    }),
 }
