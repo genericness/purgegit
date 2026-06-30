@@ -36,6 +36,8 @@ export interface CommitNode {
   parents: string[]
   author: CommitIdentity
   committer: CommitIdentity
+  authorLogin: string | null
+  committerLogin: string | null
   message: string
 }
 

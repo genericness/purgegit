@@ -6,7 +6,9 @@ import {
   buildCanonical,
   collectIdentities,
   computeAffected,
+  defaultScrubKeys,
   identityKey,
+  ownershipOf,
   topoSort,
 } from "@/lib/history"
 import type { Me, Repo } from "@/lib/types"
@@ -74,11 +76,9 @@ export function HistoryScrubDialog({ repo, me, onClose }: { repo: Repo; me: Me; 
   useEffect(() => {
     if (scan && !seeded.current) {
       seeded.current = true
-      setSelectedScrub(
-        new Set(identities.filter((i) => !i.isCanonical).map((i) => identityKey(i.name, i.email)))
-      )
+      setSelectedScrub(defaultScrubKeys(identities, me))
     }
-  }, [scan, identities])
+  }, [scan, identities, me])
 
   const affectedCount = useMemo(
     () => (scan ? computeAffected(scan.commits, selectedScrub).size : 0),
@@ -280,17 +280,19 @@ export function HistoryScrubDialog({ repo, me, onClose }: { repo: Repo; me: Me; 
               <div className="flex flex-col gap-3">
                 <p className="text-xs text-muted-foreground">
                   {scan.commits.length} commit{scan.commits.length === 1 ? "" : "s"} across {scan.branches.length}{" "}
-                  branch{scan.branches.length === 1 ? "" : "es"}. Select the identities to replace:
+                  branch{scan.branches.length === 1 ? "" : "es"}. Only identities linked to your account are selected by
+                  default — other contributors are left untouched.
                 </p>
 
                 <ul className="max-h-44 overflow-y-auto rounded-lg border border-border bg-muted/30 p-1.5 text-sm">
                   {identities.map((i) => {
                     const key = identityKey(i.name, i.email)
+                    const who = ownershipOf(i, me)
                     return (
                       <li key={key} className="flex items-center gap-2.5 px-1.5 py-1.5">
                         <Checkbox
                           checked={selectedScrub.has(key)}
-                          disabled={i.isCanonical}
+                          disabled={who === "other" || i.isCanonical}
                           onCheckedChange={() => toggleIdentity(key)}
                           aria-label={`Replace ${i.name}`}
                         />
@@ -298,10 +300,17 @@ export function HistoryScrubDialog({ repo, me, onClose }: { repo: Repo; me: Me; 
                           <div className="truncate text-foreground">{i.name || "(no name)"}</div>
                           <div className="truncate text-xs text-muted-foreground">{i.email}</div>
                         </div>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {i.authorCount + i.committerCount}
+                        </span>
                         {i.isCanonical ? (
                           <Badge variant="secondary" className="shrink-0">you</Badge>
+                        ) : who === "other" ? (
+                          <Badge variant="secondary" className="shrink-0">@{i.login}</Badge>
+                        ) : who === "unlinked" ? (
+                          <Badge variant="outline" className="shrink-0">unlinked</Badge>
                         ) : (
-                          <Badge variant="outline" className="shrink-0">{i.authorCount + i.committerCount}</Badge>
+                          <Badge variant="outline" className="shrink-0">you</Badge>
                         )}
                       </li>
                     )

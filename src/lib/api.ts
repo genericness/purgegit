@@ -90,7 +90,7 @@ export const api = {
     return result
   },
   peekIdentities: (owner: string, name: string) =>
-    request<{ identities: { name: string; email: string }[] }>(
+    request<{ identities: { name: string; email: string; login: string | null }[] }>(
       `/api/history/${e(owner)}/${e(name)}/peek`
     ),
   createCommit: (

@@ -213,7 +213,14 @@ export function Dashboard({ me }: { me: Me }) {
     for (const r of repos) {
       try {
         const { identities } = await api.peekIdentities(r.owner, r.name)
-        if (identities.some((i) => i.email && !keptEmails.has(i.email.toLowerCase()))) found.add(r.id)
+        const mineOld = identities.some(
+          (i) =>
+            i.email &&
+            i.login &&
+            i.login.toLowerCase() === me.login.toLowerCase() &&
+            !keptEmails.has(i.email.toLowerCase())
+        )
+        if (mineOld) found.add(r.id)
       } catch {
         found.delete(r.id)
       }

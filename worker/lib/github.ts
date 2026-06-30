@@ -230,7 +230,15 @@ export interface CommitNode {
   parents: string[]
   author: CommitIdentity
   committer: CommitIdentity
+  authorLogin: string | null
+  committerLogin: string | null
   message: string
+}
+
+export interface PeekIdentity {
+  name: string
+  email: string
+  login: string | null
 }
 
 export interface RefInfo {
@@ -282,6 +290,8 @@ async function collectCommitsFrom(
         author: CommitIdentity
         committer: CommitIdentity
       }
+      author: { login: string } | null
+      committer: { login: string } | null
       parents: { sha: string }[]
     }>
     for (const c of batch) {
@@ -292,6 +302,8 @@ async function collectCommitsFrom(
         parents: c.parents.map((p) => p.sha),
         author: c.commit.author,
         committer: c.commit.committer,
+        authorLogin: c.author?.login ?? null,
+        committerLogin: c.committer?.login ?? null,
         message: c.commit.message,
       })
       if (into.size > cap) return false
@@ -330,18 +342,26 @@ export async function scanHistory(
   return { branches, tags, commits: [...commits.values()], truncated: !ok }
 }
 
-export async function peekIdentities(token: string, owner: string, repo: string): Promise<CommitIdentity[]> {
+export async function peekIdentities(token: string, owner: string, repo: string): Promise<PeekIdentity[]> {
   const res = await githubFetch(token, `/repos/${owner}/${repo}/commits?per_page=100`)
   if (res.status === 409) return []
   if (!res.ok) throw await toError(res)
   const batch = (await res.json()) as Array<{
+    author: { login: string } | null
+    committer: { login: string } | null
     commit: { author: CommitIdentity | null; committer: CommitIdentity | null }
   }>
-  const seen = new Map<string, CommitIdentity>()
+  const seen = new Map<string, PeekIdentity>()
+  const add = (id: CommitIdentity | null, login: string | null) => {
+    if (!id?.email) return
+    const key = `${id.name} ${id.email}`
+    const existing = seen.get(key)
+    if (!existing) seen.set(key, { name: id.name, email: id.email, login })
+    else if (login && !existing.login) existing.login = login
+  }
   for (const c of batch) {
-    for (const id of [c.commit.author, c.commit.committer]) {
-      if (id?.email) seen.set(`${id.name} ${id.email}`, id)
-    }
+    add(c.commit.author, c.author?.login ?? null)
+    add(c.commit.committer, c.committer?.login ?? null)
   }
   return [...seen.values()]
 }
