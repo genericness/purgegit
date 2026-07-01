@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
-import type { Repo } from "@/lib/types"
+import type { Owner, Repo } from "@/lib/types"
 
-export function useRepos(enabled: boolean) {
+export function useRepos(owner: Owner | null) {
   return useQuery<Repo[]>({
-    queryKey: ["repos"],
-    queryFn: async () => (await api.repos()).repos,
-    enabled,
+    queryKey: ["repos", owner?.login],
+    queryFn: async () => (await api.repos(owner ?? undefined)).repos,
+    enabled: !!owner,
     staleTime: 30_000,
     retry: false,
   })

@@ -1,4 +1,4 @@
-import type { CommitIdentity, ForkParent, Me, Repo, ScanResult } from "./types"
+import type { CommitIdentity, ForkParent, Me, Owner, Repo, ScanResult } from "./types"
 
 export class ApiError extends Error {
   status: number
@@ -37,7 +37,11 @@ const e = encodeURIComponent
 
 export const api = {
   me: () => request<Me>("/api/me"),
-  repos: () => request<{ repos: Repo[]; total: number }>("/api/repos"),
+  owners: () => request<{ owners: Owner[] }>("/api/owners"),
+  repos: (owner?: Owner) =>
+    request<{ repos: Repo[]; total: number }>(
+      owner && owner.type === "org" ? `/api/repos?owner=${e(owner.login)}&type=org` : "/api/repos"
+    ),
   parent: (owner: string, name: string) =>
     request<ForkParent | null>(`/api/repos/${e(owner)}/${e(name)}/parent`),
   makePrivate: (owner: string, name: string) =>

@@ -1,14 +1,15 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { RefreshCwIcon, HistoryIcon } from "lucide-react"
 import { toast } from "sonner"
 import { useRepos } from "@/hooks/use-repos"
+import { useOwners } from "@/hooks/use-owners"
 import { api } from "@/lib/api"
 import { runBatch, type BatchItem } from "@/lib/queue"
 import { monthsSince } from "@/lib/format"
 import { buildCanonical } from "@/lib/history"
 import { cn } from "@/lib/utils"
-import type { Filters, Me, Repo, RepoAction, SortKey } from "@/lib/types"
+import type { Filters, Me, Owner, Repo, RepoAction, SortKey } from "@/lib/types"
 import { AppHeader } from "@/components/app-header"
 import { FiltersToolbar } from "@/components/filters-toolbar"
 import { RepoTable } from "@/components/repo-table"
@@ -70,7 +71,10 @@ function ListSkeleton() {
 
 export function Dashboard({ me }: { me: Me }) {
   const queryClient = useQueryClient()
-  const reposQuery = useRepos(true)
+  const ownersQuery = useOwners()
+  const owners = useMemo(() => ownersQuery.data ?? [], [ownersQuery.data])
+  const [owner, setOwner] = useState<Owner | null>(null)
+  const reposQuery = useRepos(owner)
   const repos = useMemo(() => reposQuery.data ?? [], [reposQuery.data])
 
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS)
@@ -83,6 +87,16 @@ export function Dashboard({ me }: { me: Me }) {
   const [flagged, setFlagged] = useState<Set<number>>(new Set())
   const [scanning, setScanning] = useState(false)
   const [running, setRunning] = useState(false)
+
+  useEffect(() => {
+    if (!owner) setOwner({ login: me.login, type: "user", avatarUrl: me.avatarUrl })
+  }, [owner, me])
+
+  useEffect(() => {
+    setSelected(new Set())
+    setFlagged(new Set())
+    setBusy({})
+  }, [owner?.login])
 
   const visible = useMemo(() => {
     let list = repos
@@ -122,7 +136,7 @@ export function Dashboard({ me }: { me: Me }) {
   }
 
   function applyOptimistic(action: RepoAction, id: number) {
-    queryClient.setQueryData<Repo[]>(["repos"], (old) => {
+    queryClient.setQueryData<Repo[]>(["repos", owner?.login], (old) => {
       if (!old) return old
       if (action === "archive") return old.map((r) => (r.id === id ? { ...r, archived: true } : r))
       return old.filter((r) => r.id !== id)
@@ -196,13 +210,14 @@ export function Dashboard({ me }: { me: Me }) {
     else if (okCount === 0) toast.error(`Failed on ${failed.length} ${noun(failed.length)}`)
     else toast.warning(`${okCount} ${PAST_TENSE[action]}, ${failed.length} failed`)
 
-    void queryClient.invalidateQueries({ queryKey: ["repos"] })
+    void queryClient.invalidateQueries({ queryKey: ["repos", owner?.login] })
   }
 
   async function handleLogout() {
     await api.logout().catch(() => undefined)
     queryClient.setQueryData(["me"], null)
     queryClient.removeQueries({ queryKey: ["repos"] })
+    queryClient.removeQueries({ queryKey: ["owners"] })
   }
 
   async function runDiscovery() {
@@ -242,8 +257,28 @@ export function Dashboard({ me }: { me: Me }) {
       <main className="mx-auto max-w-4xl px-4 py-6 pb-28">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold text-foreground">your public repositories</h1>
-            <p className="text-sm text-muted-foreground">
+            {owners.length > 1 ? (
+              <div className="flex items-center gap-2">
+                {owner && (
+                  <img src={owner.avatarUrl} alt="" className="size-6 shrink-0 rounded-full ring-1 ring-border" />
+                )}
+                <select
+                  className="h-8 min-w-0 max-w-full rounded-lg border border-input bg-transparent px-2.5 text-sm font-medium text-foreground outline-none [color-scheme:dark] [&>option]:bg-popover [&>option]:text-popover-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                  value={owner?.login ?? ""}
+                  onChange={(e) => setOwner(owners.find((o) => o.login === e.target.value) ?? null)}
+                  aria-label="Repository owner"
+                >
+                  {owners.map((o) => (
+                    <option key={o.login} value={o.login}>
+                      {o.type === "user" ? `${o.login} (you)` : o.login}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <h1 className="text-lg font-semibold text-foreground">your public repositories</h1>
+            )}
+            <p className="mt-1 text-sm text-muted-foreground">
               select repos to make private, archive, or delete.
             </p>
           </div>
@@ -272,7 +307,7 @@ export function Dashboard({ me }: { me: Me }) {
         <FiltersToolbar filters={filters} onChange={setFilters} />
 
         <div className="mt-5">
-          {reposQuery.isLoading ? (
+          {!owner || reposQuery.isLoading ? (
             <ListSkeleton />
           ) : reposQuery.isError ? (
             <EmptyState
@@ -282,7 +317,7 @@ export function Dashboard({ me }: { me: Me }) {
           ) : repos.length === 0 ? (
             <EmptyState
               title="nothing to purge"
-              description="you have no public repositories owned by this account."
+              description="no public repositories found for this owner."
             />
           ) : visible.length === 0 ? (
             <EmptyState title="no matches" description="no repositories match the current filters." />

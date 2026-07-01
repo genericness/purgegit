@@ -24,6 +24,12 @@ export interface Me {
   htmlUrl: string
 }
 
+export interface Owner {
+  login: string
+  type: "user" | "org"
+  avatarUrl: string
+}
+
 export interface CommitIdentity {
   name: string
   email: string

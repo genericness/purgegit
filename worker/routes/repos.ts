@@ -4,6 +4,7 @@ import { requireAuth } from "../middleware/require-auth"
 import { handleGitHubError } from "../lib/http"
 import {
   listPublicRepos,
+  listOrgRepos,
   setRepoPrivate,
   setRepoArchived,
   deleteRepo,
@@ -16,7 +17,12 @@ repos.use("*", requireAuth)
 
 repos.get("/", async (c) => {
   try {
-    const list = await listPublicRepos(c.get("token"))
+    const owner = c.req.query("owner")
+    const type = c.req.query("type")
+    const list =
+      type === "org" && owner
+        ? await listOrgRepos(c.get("token"), owner)
+        : await listPublicRepos(c.get("token"))
     return c.json({ repos: list, total: list.length })
   } catch (err) {
     return handleGitHubError(c, err)

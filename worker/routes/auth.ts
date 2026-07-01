@@ -19,7 +19,7 @@ auth.get("/login", (c) => {
   const params = new URLSearchParams({
     client_id: c.env.GITHUB_CLIENT_ID,
     redirect_uri: `${c.env.APP_BASE_URL}/api/auth/callback`,
-    scope: "repo delete_repo",
+    scope: "repo delete_repo read:org",
     state,
     allow_signup: "false",
   })

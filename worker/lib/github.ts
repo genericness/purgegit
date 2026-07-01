@@ -165,6 +165,40 @@ export async function listPublicRepos(token: string): Promise<RepoDTO[]> {
   return repos
 }
 
+export interface OrgInfo {
+  login: string
+  avatarUrl: string
+}
+
+export async function listOrgs(token: string): Promise<OrgInfo[]> {
+  const out: OrgInfo[] = []
+  for (let page = 1; page <= 10; page++) {
+    const res = await githubFetch(token, `/user/orgs?per_page=100&page=${page}`)
+    if (!res.ok) throw await toError(res)
+    const batch = (await res.json()) as { login: string; avatar_url: string }[]
+    for (const o of batch) out.push({ login: o.login, avatarUrl: o.avatar_url })
+    if (batch.length < 100) break
+  }
+  return out
+}
+
+export async function listOrgRepos(token: string, org: string): Promise<RepoDTO[]> {
+  const repos: RepoDTO[] = []
+  const maxPages = 20
+  for (let page = 1; page <= maxPages; page++) {
+    const res = await githubFetch(
+      token,
+      `/orgs/${org}/repos?type=public&sort=pushed&direction=desc&per_page=100&page=${page}`
+    )
+    if (!res.ok) throw await toError(res)
+    const batch = (await res.json()) as GitHubRepo[]
+    for (const r of batch) repos.push(toDTO(r))
+    const link = res.headers.get("link") ?? ""
+    if (!link.includes('rel="next"')) break
+  }
+  return repos
+}
+
 async function patchRepo(token: string, owner: string, repo: string, body: Record<string, boolean>): Promise<void> {
   const res = await githubFetch(token, `/repos/${owner}/${repo}`, {
     method: "PATCH",
