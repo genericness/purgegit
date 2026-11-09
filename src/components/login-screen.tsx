@@ -1,15 +1,7 @@
-import { Suspense, lazy, type SVGProps } from "react"
+import type { SVGProps } from "react"
+import { ArrowUpRight } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-
-const HeroBackground = lazy(() =>
-  import("@/components/hero-background").then((m) => ({ default: m.HeroBackground }))
-)
-
-const PIXEL_COLOR = "#8573e4"
-
-const fallbackGradient =
-  "h-full w-full bg-[radial-gradient(60%_55%_at_50%_30%,color-mix(in_oklch,var(--primary),transparent_80%)_0%,transparent_72%)]"
 
 function GithubIcon(props: SVGProps<SVGSVGElement>) {
   return (
@@ -19,50 +11,44 @@ function GithubIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+/** One quiet, left-aligned column on the app's own background: name, what it does, one way in. */
 export function LoginScreen() {
   const authError = new URLSearchParams(window.location.search).get("auth") === "error"
 
   return (
-    <main className="relative flex min-h-[100svh] flex-col items-center justify-center overflow-hidden px-6 py-16">
-      <div className="absolute inset-0 z-0">
-        <Suspense fallback={<div aria-hidden className={fallbackGradient} />}>
-          <HeroBackground color={PIXEL_COLOR} />
-        </Suspense>
-      </div>
+    <main className="flex min-h-[100svh] items-center px-6 py-16">
+      <div className="mx-auto w-full max-w-[460px] pb-[8svh]">
+        <h1 className="font-pixel text-4xl leading-none text-foreground">purgegit</h1>
 
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(62%_55%_at_50%_44%,color-mix(in_oklch,var(--background),transparent_20%)_0%,color-mix(in_oklch,var(--background),transparent_60%)_46%,transparent_80%)]"
-      />
+        <p className="mt-3 text-[15px] leading-6 text-muted-foreground">clean up your github.</p>
 
-      <div className="pointer-events-none relative z-10 flex w-full max-w-md flex-col items-center text-center">
-        <h1 className="text-legible font-pixel text-5xl tracking-tight text-foreground sm:text-6xl">
-          purgegit
-        </h1>
-
-        <p className="text-legible mt-5 text-base text-foreground/80 sm:text-lg">
-          clean up your github. make old public repos private, archive, or delete them in bulk.
+        <p className="mt-6 text-[15px] leading-6 text-foreground/80">
+          make old public repos private, archive, or delete them in bulk, and catch old names leaking
+          through your commit history.
         </p>
 
-        <div className="pointer-events-auto mt-10">
-          <a className={cn(buttonVariants(), "h-11 gap-2 rounded-lg px-6 text-sm")} href="/api/auth/login">
+        <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
+          <a className={cn(buttonVariants(), "h-9 gap-2 px-4")} href="/api/auth/login">
             <GithubIcon className="size-4" />
             sign in with github
           </a>
+          <a
+            href="https://github.com/genericness/purgegit"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex items-center gap-1 rounded-sm text-sm text-muted-foreground hover:text-foreground"
+          >
+            source
+            <ArrowUpRight aria-hidden className="size-3.5" />
+          </a>
         </div>
 
+        {/* --destructive is a dark fill colour (about 2:1 on this background), so the message uses a light red. */}
         {authError && (
-          <p className="text-legible mt-4 text-sm text-destructive">sign-in failed. please try again.</p>
+          <p role="alert" className="mt-5 text-sm text-red-300">
+            sign-in didn't go through. try again, and approve access when github asks.
+          </p>
         )}
-
-        <a
-          href="https://github.com/genericness/purgegit"
-          target="_blank"
-          rel="noreferrer noopener"
-          className="text-legible pointer-events-auto mt-10 text-xs text-foreground/55 underline-offset-4 transition-colors hover:text-foreground/85 hover:underline"
-        >
-          open source
-        </a>
       </div>
     </main>
   )

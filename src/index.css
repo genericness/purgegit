@@ -185,10 +185,3 @@
     letter-spacing: var(--tracking-normal);
   }
 }
-
-@utility text-legible {
-  text-shadow:
-    0 1px 2px rgb(0 0 0 / 0.85),
-    0 0 12px rgb(0 0 0 / 0.6),
-    0 0 26px rgb(0 0 0 / 0.4);
-}
